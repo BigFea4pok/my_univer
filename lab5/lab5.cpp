@@ -1,10 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stdio.h>  // единственный нужный заголовок
 
 #define MAX_USERS 10
 
-struct UserRec {
+struct UserRec{
     int present;
     unsigned char index;
     char *surname;
@@ -39,13 +37,13 @@ void free_user(UserRec *u) {
     init_user(u);
 }
 
+// читать один байт, возвращает -1 при EOF/ошибке
 int read_byte(FILE *f) {
     int c = fgetc(f);
     if (c == EOF) return -1;
     return c & 0xFF;
 }
 
-// Печать примера лэйаута (информативно)
 void print_file_layout_example() {
     puts("Пример лэйаута файла (hex, байт за байтом) для двух пользователей:");
     puts("02                <- число пользователей = 2");
@@ -54,7 +52,7 @@ void print_file_layout_example() {
     puts("(см. условие лабораторной для полного примера)\n");
 }
 
-// Парсер файла: читает бинарный файл filename и заполняет массив users, возвращает число прочитанных пользователей или -1 при ошибке.
+// Разбор файла filename -> users[], возвращает число прочитанных пользователей или -1 при ошибке
 int parse_user_file(const char *filename, UserRec users[], int max_users) {
     for (int i = 0; i < max_users; ++i) init_user(&users[i]);
 
@@ -89,6 +87,7 @@ int parse_user_file(const char *filename, UserRec users[], int max_users) {
         unsigned char index = (unsigned char)idx;
         unsigned char datalen = (unsigned char)len;
 
+        // выделяем временный буфер для datalen байт
         unsigned char *buf = new unsigned char[datalen];
         size_t got = fread(buf, 1, datalen, f);
         if (got != datalen) {
@@ -113,6 +112,7 @@ int parse_user_file(const char *filename, UserRec users[], int max_users) {
             }
 
             if (id == 0x01) {
+                // фамилия — строка (dlen байт), копируем в новый буфер и ставим '\0'
                 char *s = new char[dlen + 1];
                 for (int i = 0; i < dlen; ++i) s[i] = (char)buf[p + i];
                 s[dlen] = '\0';
@@ -139,7 +139,7 @@ int parse_user_file(const char *filename, UserRec users[], int max_users) {
                 }
             } else if (id == 0x06) {
                 if (dlen >= 2) {
-                    unsigned short val = (unsigned short)buf[p] | ((unsigned short)buf[p+1] << 8);
+                    unsigned short val = (unsigned short)buf[p] | ((unsigned short)buf[p+1] << 8); // little-endian
                     u.usage = val;
                     u.has_usage = 1;
                 }
@@ -148,13 +148,13 @@ int parse_user_file(const char *filename, UserRec users[], int max_users) {
             }
 
             p += dlen;
-        }
+        } // while parsing fields
 
         users[users_read] = u;
         users_read++;
 
         delete[] buf;
-    }
+    } // for blocks
 
     fclose(f);
     return users_read;
